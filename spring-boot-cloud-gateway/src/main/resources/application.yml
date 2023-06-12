@@ -1,0 +1,53 @@
+#  https://httpbin.org/
+#  Run locally: $ docker run -p 80:80 kennethreitz/httpbin
+
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: route1
+          uri: https://httpbin.org
+          predicates:
+            - Path=/get
+          #          see documentation for more filters and all necessary configuration
+          filters:
+            - AddRequestHeader=X-Request-AppId, 238732
+            - AddRequestHeader=Cookie, cookieName1=cookieValue1; cookieName2=cookieValue2
+
+        - id: route2
+          uri: https://httpbin.org
+          predicates:
+            - Path=/status/undefined
+          filters:
+            - SetStatus=400
+        #        this is for version 2 without filter
+        - id: service1-without-filter
+          uri: http://localhost:8081
+          predicates:
+            - Path=/v2/service1/**
+        #        this is for version 1 with filter
+        - id: service1-with-filter
+          uri: http://localhost:8081
+          predicates:
+            - Path=/v1/service1/**
+          filters:
+            - RewritePath=/v1/service1/(?<segment>.*),/v2/service1/$\{segment}
+        #          here (?<segment>.*) is acting as a wildcard i.e. any character(**) it can accept and
+        #          $\{segment} is acting as a placeholder i.e. is the value equal to (?<segment>.*) i.e (?<segment>.*) == $\{segment}
+        #          ex ::  /v1/service1/hello -> /v2/service1/hello
+        #                 /v1/service1/(?<segment>.*) -> /v2/service1/$\{segment}
+
+        #        Suppose a user sends a request to /v1/service1/hello. In this case, the (?<segment>.*) part of the regular expression will
+        #        capture the segment "hello" and assign it to the named capture group "segment".
+        #
+        #        The RewritePath filter then rewrites the path from /v1/service1/hello to /v2/service1/hello, where "hello" is the captured
+        #        segment from the previous step. The $\{segment} in the replacement string gets replaced with the captured segment value.
+        - id: service2
+          uri: http://localhost:8082
+          predicates:
+            - Path=/service2/**
+#note for eureka client i.e. for loadbalance:
+#        - id: service-n
+#          uri: lb://service-name
+#          predicates:
+#            - Path=/uri/**
